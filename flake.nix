@@ -40,17 +40,28 @@
               sha256 = "sha256-y2fXRBSXa4dlIEegCBA5MyFOb9jW8fdhayBqOifZWk0=";
             }) { };
           hatrace =
-            pkgs.haskell.lib.dontCheck (
-              pkgs.haskell.lib.overrideCabal
-                (hself.callCabal2nix "hatrace" hatraceSource {
-                  inherit (hself) linux-ptrace posix-waitpid;
-                })
-                (drv: {
-                  configureFlags = (drv.configureFlags or [ ]) ++ [
-                    "--ghc-option=-Wno-incomplete-uni-patterns"
-                  ];
-                })
-            );
+            pkgs.haskell.lib.dontHaddock (
+            pkgs.haskell.lib.overrideCabal
+              (hself.callCabal2nix "hatrace" hatraceSource {
+                inherit (hself) linux-ptrace posix-waitpid;
+              })
+              (drv: {
+                configureFlags = (drv.configureFlags or [ ]) ++ [
+                  "--ghc-option=-Wno-incomplete-uni-patterns"
+                ];
+                testToolDepends = (drv.testToolDepends or [ ]) ++ [
+                  pkgs.nasm
+                  pkgs.gnumake
+                ];
+                preConfigure = ''
+                  sed -i 's/nasm -Wall -Werror/nasm -Wall/g' Makefile
+                  sed -i 's/gcc -static -std=c99 -Wall -Werror/gcc -static -std=c99 -Wall -U_FORTIFY_SOURCE/g' Makefile
+                  sed -i 's/gcc -static -std=gnu99 -Wall -Werror/gcc -static -std=gnu99 -Wall -U_FORTIFY_SOURCE/g' Makefile
+                '';
+                preCheck = ''
+                  export LIBRARY_PATH="${pkgs.glibc.static}/lib:$LIBRARY_PATH"
+                '';
+              }));
         };
       };
 
